@@ -10,6 +10,25 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import metrics
 import math 
 
+#Next#
+#Compare RMSE on train to test to see if overfit or no
+#Examine residuals to see if any correlation unaccounted for at single variale level
+#Check and deal with multicollinearity
+#Build interaction and polynomial variables for potential inclusion
+#Investigate regualarized regression if overfit
+#Would feature seletcion help? 
+#Any other potentially useful preprocessing?
+#EDA to view single variable correlations
+#Outlier removal needed?
+#Distributions need to be altered?
+#Data needs to be normalized to same scale etc.?
+#Does regression assume/require a normal distribution for independent variables for large samples? I dont think so
+#Go back over Andrew Ng advice here and generally
+#More to try: https://www.kaggle.com/c/house-prices-advanced-regression-techniques/discussion/60953
+#https://www.kaggle.com/pmarcelino/comprehensive-data-exploration-with-python
+#https://www.kaggle.com/mjbahmani/20-ml-algorithms-for-house-prices-prediction
+#https://www.kaggle.com/serigne/stacked-regressions-top-4-on-leaderboard the links in here look great too
+
 ################
 #IMPORT THE DATA
 @ -27,7 +29,10 @@ abt= pd.read_csv(os.path.join(input_dir,file_name), encoding='utf8')
