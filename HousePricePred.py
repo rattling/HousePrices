@@ -9,25 +9,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import metrics
 import math 
 
-#Next#
-#Compare RMSE on train to test to see if overfit or no
-#Examine residuals to see if any correlation unaccounted for at single variale level
-#Check and deal with multicollinearity
-#Build interaction and polynomial variables for potential inclusion
-#Investigate regualarized regression if overfit - try different alphas
-#Cross validate rather than test/train?
-#Would feature seletcion help? 
-#Any other potentially useful preprocessing?
-#EDA to view single variable correlations
-#Outlier removal needed?
-#Distributions need to be altered?
-#Data needs to be normalized to same scale etc.?
-#Does regression assume/require a normal distribution for independent variables for large samples? I dont think so
-#Go back over Andrew Ng advice here and generally
-#More to try: https://www.kaggle.com/c/house-prices-advanced-regression-techniques/discussion/60953
-#https://www.kaggle.com/pmarcelino/comprehensive-data-exploration-with-python
-#https://www.kaggle.com/mjbahmani/20-ml-algorithms-for-house-prices-prediction
-#https://www.kaggle.com/serigne/stacked-regressions-top-4-on-leaderboard the links in here look great too
+
 
 #####################################################################
 #IMPORT THE DATA
@@ -53,15 +35,27 @@ abt2['LotFrontage'].fillna(0, inplace=True)
 abt2['GarageYrBlt'].fillna(abt2['GarageYrBlt'].mean(), inplace=True)
 abt2['MasVnrArea'].fillna(abt2['MasVnrArea'].mean(), inplace=True)
 
+####################################################################
+#Generate polynomial features including interaction terms
+from sklearn.preprocessing import PolynomialFeatures
+poly = PolynomialFeatures(degree=2, include_bias=False)
+colnames = poly.get_feature_names(abt2.columns)
+abt3 = poly.fit_transform(abt2)
+#NEXT HOW TO ADD THE COLNAMES
+####################################################################
 
-train=abt2.sample(frac=0.7,random_state=200)
-test=abt2.drop(train.index)
+
+train=abt3.sample(frac=0.7,random_state=200)
+test=abt3.drop(train.index)
 
 train_y = train.loc[:,['SalePrice']]
 train_x = train.drop('SalePrice', 1)
 
 test_y = test.loc[:,['SalePrice']]
 test_x = test.drop('SalePrice', 1)
+
+
+
 
 
 # Create linear regression object
@@ -114,13 +108,10 @@ score2['MasVnrArea'].fillna(score['MasVnrArea'].mean(), inplace=True)
 score2 = score2.fillna(0)
 score2 = score2.drop('SalePrice', 1)
 
-#num_only = score2.select_dtypes(include=numerics)
-#num_only = score2.select_dtypes(exclude=['object'])
-#score2.isnull().sum(axis = 0).sort_values(ascending=False)
-score_y = np.asarray(regr.predict(score2))
-score_y= pd.DataFrame(score_y)
-result = pd.concat([score["Id"], score_y], axis=1, sort=False)
-result = result.rename(columns={result.columns[1]: "SalePrice" })
 
 
-result.to_csv(os.path.join(output_dir,scored_file), encoding='utf8')
+#score_y = np.asarray(regr.predict(score2))
+#score_y= pd.DataFrame(score_y)
+#result = pd.concat([score["Id"], score_y], axis=1, sort=False)
+#result = result.rename(columns={result.columns[1]: "SalePrice" })
+#result.to_csv(os.path.join(output_dir,scored_file), encoding='utf8')
