@@ -24,7 +24,7 @@ score=pd.read_csv(os.path.join(input_dir,score_file), encoding='utf8')
 #APPEND ALL THE DATA AND ENSURE ALL LEVELS MATCHING FOR CATEGORICALS
 train_objs_num = len(abt)
 all_data = pd.concat(objs=[abt, score], axis=0)
-all_data2 = pd.get_dummies(all_data)
+all_data2 = pd.get_dummies(all_data, drop_first=True)
 
 #####################################################################
 #PRE-PROCESSING
