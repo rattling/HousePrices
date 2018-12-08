@@ -9,6 +9,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import metrics
 import math 
 from sklearn import preprocessing as pp
+from sklearn.model_selection import KFold
+
 
 #####################################################################
 #DATA COLLECTION
@@ -51,19 +53,19 @@ all_data2_x = all_data2_x.fillna(0)
 #    #print (col_name)
 
 #More thorugh polynomial feature generation
-def genPoly():
-    poly = pp.PolynomialFeatures(2)
-    forPoly = all_data2_x[[c for c in all_data2_x.columns if c in num_list]]
-    notForPoly = all_data2_x[[c for c in all_data2_x.columns if c not in num_list]]
-    a1 = poly.fit_transform(forPoly)
-    a2 = poly.get_feature_names(forPoly.columns)
-    a3= pd.DataFrame(data=a1, columns = a2)
-    #For some reason the indexes gets garbled when you do the column subsetting
-    forPoly = forPoly.reset_index(drop=True)
-    notForPoly = notForPoly.reset_index(drop=True)
-    all_data3_x =  pd.concat([notForPoly, a3], axis=1)
+
+poly = pp.PolynomialFeatures(2)
+forPoly = all_data2_x[[c for c in all_data2_x.columns if c in num_list]]
+notForPoly = all_data2_x[[c for c in all_data2_x.columns if c not in num_list]]
+a1 = poly.fit_transform(forPoly)
+a2 = poly.get_feature_names(forPoly.columns)
+a3= pd.DataFrame(data=a1, columns = a2)
+#For some reason the indexes gets garbled when you do the column subsetting
+forPoly = forPoly.reset_index(drop=True)
+notForPoly = notForPoly.reset_index(drop=True)
+all_data3_x =  pd.concat([notForPoly, a3], axis=1)
     
-genPoly()
+
     
 abt2 = all_data3_x[:train_objs_num]
 tmp_y= all_data2_y[:train_objs_num]
@@ -82,57 +84,68 @@ score2 = all_data3_x[train_objs_num:]
 all_x = abt2.drop('SalePrice', 1)
 all_y = abt2.loc[:,['SalePrice']]
 
-train=abt2.sample(frac=0.7,random_state=200)
-test=abt2.drop(train.index)
-
-train_x = train.drop('SalePrice', 1)
-train_y = train.loc[:,['SalePrice']]
-
-test_x = test.drop('SalePrice', 1)
-test_y = test.loc[:,['SalePrice']]
-
-def train_regression(x, y, alpha_param):
-    regr = Ridge(alpha=alpha_param,normalize=True)
-    regr.fit(x, y)
-    return regr
-
-def implement_regression(x, y,regr):
-    #Create the regression object
-    #Make predictions on the train data
-    fit_y = np.asarray(regr.predict(x))
-    #Replace negative/zero values wtih 1 so can take log
-    fit_y[fit_y<=0] = 1
-    #Take log to calculate the competition metric RMSE of log values
-    log_fit_y = np.log(fit_y)    
-    #Convert y aswell so can compare
-    actual_y = np.asarray(y)
-    log_actual_y = np.log(actual_y)    
-    #Calculate the RMSE for train set
-    rmse=np.sqrt(metrics.mean_squared_error(log_actual_y, log_fit_y))
+###################################################################
+def calc_error(X, y, model):
+    '''returns in-sample error for already fit model.'''   
+    predictions = np.asarray(model.predict(X))
+    predictions[predictions<=0] = 1
+    log_predictions= np.log(predictions)
+    actual = np.asarray(y)    
+    log_actual= np.log(actual)
+    mse = mean_squared_error(log_actual, log_predictions)
+    rmse = np.sqrt(mse)
     return rmse
 
-print ("alpha, rmse_train, rmse_test")
-#mylist = [.1, .3, 1, 1.3, 1.6, 2.0, 3.0, 4.0, 5.0,6.0, 7.0, 8.0, 9.0, 10.0]
-mylist = [2]
-for alpha_param in mylist:
-    regr=train_regression(train_x, train_y, alpha_param)
-    rmse_train = implement_regression(train_x, train_y, regr)
-    rmse_test = implement_regression(test_x, test_y, regr)
-    print (str(alpha_param), str(rmse_train), str(rmse_test))
+def calc_metrics(X_train, y_train, X_test, y_test, model):
+    '''fits model and returns the LRMSE for in-sample error and out-of-sample error'''
+    model.fit(X_train, y_train)
+    train_error = calc_error(X_train, y_train, model)
+    validation_error = calc_error(X_test, y_test, model)
+    return train_error, validation_error
+
+K = 8
+kf = KFold(n_splits=K, shuffle=True, random_state=42)
+alphas = [.1, .3, 1, 1.3, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6,2.8, 3.0, 4.0, 5.0,6.0, 7.0, 8.0, 9.0, 10.0]
+
+for alpha in alphas:
+    train_errors = []
+    validation_errors = []
+    for train_index, val_index in kf.split(all_x, all_y):
+        #print("Hello")
+        #split data   
+        X_train, X_val = all_x.iloc[train_index], all_x.iloc[val_index]
+        y_train, y_val = all_y.iloc[train_index], all_y.iloc[val_index]
     
-#print(regr.coef_)
+        # instantiate model
+        model = Ridge(alpha=alpha,normalize=True)
+                
+        #calculate errors
+        train_error, val_error = calc_metrics(X_train, y_train, X_val, y_val, model)
+        
+        # append to appropriate list
+        train_errors.append(train_error)
+        validation_errors.append(val_error)
+    #    
+    # generate report
+    print('alpha: {:6} | mean(train_error): {:7} | mean(val_error): {}'.
+          format(alpha,
+                 round(np.mean(train_errors),4),
+                 round(np.mean(validation_errors),4)))
+
+###################################################################
 
 
 ###################################################################
 #Score data for competition
 ###################################################################
-
 #Do a final training using all data
-#regr=train_regression(all_x, all_y, alpha_param)
-#rmse_all = implement_regression(all_x, all_y, regr)  
-#  
-#score_y = np.asarray(regr.predict(score2))
-#score_y= pd.DataFrame(score_y)
-#result = pd.concat([score["Id"], score_y], axis=1, sort=False)
-#result = result.rename(columns={result.columns[1]: "SalePrice" })
-#result.to_csv(os.path.join(output_dir,scored_file), encoding='utf8', index=False)
+alpha_param = 1.6
+model = Ridge(alpha=alpha_param,normalize=True)
+model.fit(all_x, all_y)
+train_error = calc_error(all_x, all_y, model)
+   
+score_y = np.asarray(model.predict(score2))
+score_y= pd.DataFrame(score_y)
+result = pd.concat([score["Id"], score_y], axis=1, sort=False)
+result = result.rename(columns={result.columns[1]: "SalePrice" })
+result.to_csv(os.path.join(output_dir,scored_file), encoding='utf8', index=False)
